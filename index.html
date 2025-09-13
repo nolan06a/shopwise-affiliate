@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopwise - Lựa chọn của bạn</title>
+    <!-- Tích hợp Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tích hợp Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Sử dụng font Be Vietnam Pro cho toàn bộ trang web */
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #f7fafc;
+        }
+        /* Hiệu ứng khi di chuột vào sản phẩm */
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Kiểu cho nút danh mục được chọn */
+        .category-btn.active {
+            background-color: #f97316; /* Màu cam đậm */
+            color: white;
+            border-color: #f97316;
+        }
+        /* Đảm bảo modal có thể cuộn trên màn hình nhỏ */
+        #modal-content {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <nav class="container mx-auto px-6 py-4">
+            <h1 class="text-3xl font-bold text-orange-500">Shopwise</h1>
+            <p class="text-gray-600">Lựa chọn thông minh của bạn</p>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Affiliate Link Generator Section -->
+        <section class="bg-white p-6 rounded-lg shadow-lg mb-12">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Tạo link Affiliate & Săn Voucher</h2>
+            <p class="text-gray-600 text-center mb-4">Dán link sản phẩm Shopee vào đây để tạo link affiliate và nhận mẹo săn voucher từ AI.</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <input type="url" id="shopee-url-input" placeholder="https://shopee.vn/..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-400 focus:outline-none">
+                <button id="generate-link-btn" class="bg-orange-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-orange-600 transition-colors duration-300">
+                    Tạo Link & Nhận Mẹo
+                </button>
+            </div>
+        </section>
+
+
+        <section class="text-center mb-12">
+            <h2 class="text-4xl font-bold text-gray-800 mb-4">Sản phẩm nổi bật</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto">Hoặc khám phá những sản phẩm được yêu thích nhất bên dưới.</p>
+        </section>
+
+        <!-- Category Filters -->
+        <div id="category-filters" class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8">
+            <!-- Nút lọc danh mục sẽ được chèn vào đây bằng JavaScript -->
+        </div>
+
+        <!-- Product Grid -->
+        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            <!-- Các sản phẩm sẽ được chèn vào đây bằng JavaScript -->
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white mt-12">
+        <div class="container mx-auto px-6 py-4 text-center">
+            <p>&copy; 2024 Shopwise. Mọi quyền được bảo lưu.</p>
+            <p class="text-sm text-gray-400 mt-1">Trang web này hoạt động như một bên tiếp thị liên kết cho Shopee.</p>
+        </div>
+    </footer>
+
+    <!-- Gemini Modal -->
+    <div id="gemini-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden items-center justify-center p-4 transition-opacity duration-300">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md transform transition-transform duration-300 scale-95">
+            <div class="p-6 relative">
+                <button id="close-modal-btn" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <div id="modal-content">
+                    <!-- Nội dung modal sẽ được cập nhật bằng JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- PHẦN CÀI ĐẶT QUAN TRỌNG ---
+        // THAY THẾ link này bằng link affiliate gốc của bạn.
+        // {URL} sẽ được tự động thay thế bằng link sản phẩm Shopee.
+        // Ví dụ: 'https://go.isclix.com/deep_link/5480445763469315156?url={URL}'
+        const AFFILIATE_LINK_TEMPLATE = 'https://go.isclix.com/deep_link/YOUR_AFFILIATE_ID?url={URL}';
+
+
+        // --- DANH SÁCH SẢN PHẨM ---
+        const products = [
+             {
+                id: 1,
+                name: 'Tai nghe Bluetooth không dây F9 Pro',
+                price: '150.000₫',
+                imageUrl: 'https://placehold.co/400x400/ff6600/ffffff?text=Điện+Tử+1',
+                affiliateUrl: 'https://shopee.vn',
+                category: 'Đồ điện tử'
+            },
+            {
+                id: 2,
+                name: 'Bàn phím cơ DareU EK87',
+                price: '499.000₫',
+                imageUrl: 'https://placehold.co/400x400/3498db/ffffff?text=Điện+Tử+2',
+                affiliateUrl: 'https://shopee.vn',
+                category: 'Đồ điện tử'
+            },
+            {
+                id: 3,
+                name: 'Áo thun nam Cotton basic',
+                price: '120.000₫',
+                imageUrl: 'https://placehold.co/400x400/27ae60/ffffff?text=Thời+Trang+1',
+                affiliateUrl: 'https://shopee.vn',
+                category: 'Thời trang'
+            },
+            {
+                id: 4,
+                name: 'Nồi chiên không dầu Lock&Lock',
+                price: '1.990.000₫',
+                imageUrl: 'https://placehold.co/400x400/c0392b/ffffff?text=Gia+Dụng+1',
+                affiliateUrl: 'https://shopee.vn',
+                category: 'Nhà cửa & Đời sống'
+            },
+        ];
+        // --- KẾT THÚC PHẦN CHỈNH SỬA ---
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const productGrid = document.getElementById('product-grid');
+            const categoryFilters = document.getElementById('category-filters');
+            const modal = document.getElementById('gemini-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalContent = document.getElementById('modal-content');
+            const generateLinkBtn = document.getElementById('generate-link-btn');
+            const shopeeUrlInput = document.getElementById('shopee-url-input');
+
+
+            // --- TÍCH HỢP GEMINI API ---
+            async function callGemini(prompt, onResult, onError) {
+                const apiKey = ""; // API key will be provided by the runtime environment
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API call failed with status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        onResult(candidate.content.parts[0].text);
+                    } else {
+                        throw new Error("Invalid response structure from API.");
+                    }
+                } catch (error) {
+                    console.error("Gemini API Error:", error);
+                    onError("Rất tiếc, đã có lỗi xảy ra. Vui lòng thử lại sau.");
+                }
+            }
+            
+            // Hàm hiển thị sản phẩm
+            function displayProducts(productsToDisplay) {
+                if (!productGrid) return;
+                productGrid.innerHTML = '';
+                productsToDisplay.forEach(product => {
+                    const productElement = document.createElement('div');
+                    productElement.classList.add('product-card', 'bg-white', 'rounded-lg', 'shadow-lg', 'overflow-hidden', 'transition-all', 'duration-300', 'flex', 'flex-col');
+                    productElement.innerHTML = `
+                        <a href="${product.affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" class="block">
+                            <div class="relative pb-[100%]"><img src="${product.imageUrl}" alt="${product.name}" class="absolute h-full w-full object-cover"></div>
+                        </a>
+                        <div class="p-4 flex flex-col flex-grow">
+                             <a href="${product.affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" class="block flex-grow">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2 truncate">${product.name}</h3>
+                                <p class="text-xl font-bold text-orange-500 mb-4">${product.price}</p>
+                            </a>
+                            <div class="mt-auto space-y-2">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button class="quick-advice-btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-2 rounded-lg hover:bg-blue-200 transition-colors duration-300 text-sm flex items-center justify-center gap-1" data-product-name="${product.name}">✨ Tư vấn</button>
+                                    <button class="find-voucher-btn w-full bg-green-100 text-green-800 font-bold py-2 px-2 rounded-lg hover:bg-green-200 transition-colors duration-300 text-sm" data-product-name="${product.name}">Mẹo Voucher</button>
+                                </div>
+                                <a href="${product.affiliateUrl}" target="_blank" rel="noopener noreferrer sponsored" class="block w-full bg-orange-500 text-white text-center font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors duration-300">Mua ngay trên Shopee</a>
+                            </div>
+                        </div>`;
+                    productGrid.appendChild(productElement);
+                });
+            }
+
+            // Hàm cài đặt bộ lọc danh mục
+            function setupCategories() {
+                if (!categoryFilters) return;
+                const categories = ['Tất cả', ...new Set(products.map(p => p.category))];
+                categoryFilters.innerHTML = categories.map(category => 
+                    `<button class="category-btn px-4 py-2 rounded-full border-2 border-gray-300 text-gray-700 font-semibold transition-colors duration-300 hover:bg-orange-100 hover:border-orange-200 ${category === 'Tất cả' ? 'active' : ''}" data-category="${category}">${category}</button>`
+                ).join('');
+                
+                categoryFilters.querySelectorAll('.category-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        categoryFilters.querySelector('.active')?.classList.remove('active');
+                        btn.classList.add('active');
+                        const selectedCategory = btn.dataset.category;
+                        const filteredProducts = selectedCategory === 'Tất cả' ? products : products.filter(p => p.category === selectedCategory);
+                        displayProducts(filteredProducts);
+                    });
+                });
+            }
+            
+            // Xử lý Modal
+            function openModal() {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            }
+
+            function closeModal() {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+
+            // Xử lý click vào các nút trên thẻ sản phẩm
+            productGrid.addEventListener('click', function(e) {
+                const adviceBtn = e.target.closest('.quick-advice-btn');
+                const voucherBtn = e.target.closest('.find-voucher-btn');
+                if (!adviceBtn && !voucherBtn) return;
+                e.preventDefault();
+                e.stopPropagation();
+
+                const productName = (adviceBtn || voucherBtn).dataset.productName;
+                let prompt = '';
+                let modalTitle = '';
+                if (adviceBtn) {
+                    modalTitle = `Tư vấn cho: ${productName}`;
+                    prompt = `Tạo 3 gạch đầu dòng ngắn gọn nêu bật lợi ích chính khi mua một sản phẩm có tên "${productName}". Giữ mỗi điểm thật ngắn gọn, hấp dẫn và dễ đọc. Phản hồi bằng tiếng Việt.`;
+                } else {
+                    modalTitle = `Mẹo Voucher cho: ${productName}`;
+                    prompt = `Đưa ra một vài mẹo về các loại voucher hoặc chương trình giảm giá cần tìm trên Shopee cho một sản phẩm là "${productName}". Tập trung vào các loại ưu đãi phổ biến của Shopee như Freeship Max, Voucher của Shop, và các sự kiện giảm giá toàn sàn. Phản hồi bằng tiếng Việt.`;
+                }
+                
+                modalContent.innerHTML = `<h3 class="text-xl font-bold text-gray-800 mb-4">${modalTitle}</h3><div class="text-center"><div class="mx-auto animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div><p class="text-gray-600 mt-2">✨ Gemini đang suy nghĩ... Vui lòng chờ.</p></div>`;
+                openModal();
+                callGemini(prompt, 
+                    (resultText) => {
+                        const formattedResult = resultText.replace(/(\*|-)\s*/g, '<br>• ').replace(/^\s*<br>/, '').trim();
+                        modalContent.innerHTML = `<h3 class="text-xl font-bold text-gray-800 mb-4">${modalTitle}</h3><div class="text-gray-700 space-y-2">${formattedResult}</div>`;
+                    },
+                    (errorMessage) => {
+                         modalContent.innerHTML = `<h3 class="text-xl font-bold text-red-600 mb-4">Đã xảy ra lỗi</h3><p class="text-gray-700">${errorMessage}</p>`;
+                    }
+                );
+            });
+
+            // Xử lý nút tạo link affiliate
+            generateLinkBtn.addEventListener('click', function() {
+                const productUrl = shopeeUrlInput.value.trim();
+                if (!productUrl || !productUrl.includes('shopee.vn')) {
+                    alert('Vui lòng nhập một link sản phẩm Shopee hợp lệ.');
+                    return;
+                }
+
+                // Generate Affiliate Link
+                const affiliateLink = AFFILIATE_LINK_TEMPLATE.replace('{URL}', encodeURIComponent(productUrl));
+
+                // Call Gemini for voucher tips
+                const prompt = `Tôi có một link sản phẩm Shopee: ${productUrl}. Hãy đưa ra các mẹo thông minh để tìm voucher tốt nhất cho sản phẩm này khi mua sắm. Gợi ý về voucher từ shop, mã freeship, mã hoàn xu, và các sự kiện khuyến mãi. Trả lời bằng tiếng Việt.`;
+                const modalTitle = 'Link Affiliate & Mẹo Voucher';
+
+                modalContent.innerHTML = `<h3 class="text-xl font-bold text-gray-800 mb-4">${modalTitle}</h3><div class="text-center"><div class="mx-auto animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mb-4"></div><p class="text-gray-600 mt-2">✨ Gemini đang tạo link và tìm mẹo... Vui lòng chờ.</p></div>`;
+                openModal();
+
+                callGemini(prompt,
+                    (resultText) => {
+                        const formattedResult = resultText.replace(/(\*|-)\s*/g, '<br>• ').replace(/^\s*<br>/, '').trim();
+                        modalContent.innerHTML = `
+                            <h3 class="text-xl font-bold text-gray-800 mb-4">${modalTitle}</h3>
+                            <div class="mb-4">
+                                <label class="font-bold text-gray-700">Link Affiliate của bạn:</label>
+                                <div class="flex gap-2 mt-1">
+                                    <input type="text" id="aff-link-output" value="${affiliateLink}" class="w-full p-2 border border-gray-300 rounded bg-gray-100" readonly>
+                                    <button id="copy-link-btn" class="bg-blue-500 text-white px-4 rounded hover:bg-blue-600">Copy</button>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-700">Mẹo săn voucher từ AI:</h4>
+                                <div class="text-gray-700 space-y-2 mt-1">${formattedResult}</div>
+                            </div>
+                        `;
+                        // Add event listener for the new copy button
+                        document.getElementById('copy-link-btn').addEventListener('click', function() {
+                            const linkOutput = document.getElementById('aff-link-output');
+                            
+                            // Select the text field
+                            linkOutput.select();
+                            linkOutput.setSelectionRange(0, 99999); // For mobile devices
+
+                            try {
+                                // Use the older execCommand method which is more compatible in sandboxed environments
+                                const successful = document.execCommand('copy');
+                                if (successful) {
+                                    this.textContent = 'Đã Copy!';
+                                    setTimeout(() => { this.textContent = 'Copy'; }, 2000);
+                                } else {
+                                     this.textContent = 'Lỗi!';
+                                     setTimeout(() => { this.textContent = 'Copy'; }, 2000);
+                                }
+                            } catch (err) {
+                                console.error('Fallback: Unable to copy', err);
+                                this.textContent = 'Lỗi!';
+                                setTimeout(() => { this.textContent = 'Copy'; }, 2000);
+                            }
+                            
+                            // Deselect the text
+                            window.getSelection().removeAllRanges();
+                        });
+                    },
+                    (errorMessage) => {
+                         modalContent.innerHTML = `<h3 class="text-xl font-bold text-red-600 mb-4">Đã xảy ra lỗi</h3><p class="text-gray-700">${errorMessage}</p>`;
+                    }
+                );
+            });
+
+            closeModalBtn.addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => (e.target === modal) && closeModal());
+            
+            // Khởi tạo trang
+            setupCategories();
+            displayProducts(products);
+        });
+    </script>
+</body>
+</html>
+
